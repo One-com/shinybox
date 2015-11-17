@@ -29,7 +29,7 @@
         elements = [], // slides array [{href:'...', title:'...'}, ...],
         $elem,
         selector = elem.selector,
-        $selector = $(selector),
+        $selector = option.overrideElem ? $(selector) : elem,
         isTouch = typeof document.createTouch !== 'undefined' || ('ontouchstart' in window) || ('onmsgesturechange' in window) || navigator.msMaxTouchPoints,
         supportSVG = !!(window.SVGSVGElement),
         winWidth = window.innerWidth ? window.innerWidth : $(window).width(),
