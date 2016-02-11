@@ -273,45 +273,51 @@
 
                         $(this).addClass('touching');
 
-                        endCoords = e.originalEvent.targetTouches[0];
-                        startCoords.pageX = e.originalEvent.targetTouches[0].pageX;
+                        if (e.originalEvent.touches && e.originalEvent.touches.length <= 1) {
 
-                        $('.touching').bind('touchmove', function (e) {
-                            e.preventDefault();
-                            e.stopPropagation();
                             endCoords = e.originalEvent.targetTouches[0];
-                        });
+                            startCoords.pageX = e.originalEvent.targetTouches[0].pageX;
 
-                        return false;
+                            $('.touching').bind('touchmove', function (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                endCoords = e.originalEvent.targetTouches[0];
+                            });
 
-                    }).bind('touchend', function (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        distance = endCoords.pageX - startCoords.pageX;
-
-                        if (distance >= swipMinDistance) {
-
-                            // swipeLeft
-                            $this.getPrev();
-
-                        } else if (distance <= - swipMinDistance) {
-
-                            // swipeRight
-                            $this.getNext();
-
-                        } else {
-                            // tap
-                            if (!bars.hasClass('visible-bars')) {
-                                $this.showBars();
-                                $this.setTimeout();
-                            } else {
-                                $this.clearTimeout();
-                                $this.hideBars();
-                            }
+                            return false;
                         }
 
+                    }).bind('touchend', function (e) {
                         $('.touching').off('touchmove').removeClass('touching');
+
+                        if (e.originalEvent.touches && e.originalEvent.touches.length <= 1) {
+
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            distance = endCoords.pageX - startCoords.pageX;
+
+                            if (distance >= swipMinDistance) {
+
+                                // swipeLeft
+                                $this.getPrev();
+
+                            } else if (distance <= - swipMinDistance) {
+
+                                // swipeRight
+                                $this.getNext();
+
+                            } else {
+                                // tap
+                                if (!bars.hasClass('visible-bars')) {
+                                    $this.showBars();
+                                    $this.setTimeout();
+                                } else {
+                                    $this.clearTimeout();
+                                    $this.hideBars();
+                                }
+                            }
+                        }
 
                     });
 
