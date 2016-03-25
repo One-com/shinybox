@@ -23,7 +23,8 @@
             sort: null,
             closePlacement: 'bottom',
             captionPlacement: 'top',
-            navigationPlacement: 'bottom'
+            navigationPlacement: 'bottom',
+            cycleImages: false
         },
 
         plugin = this,
@@ -465,9 +466,9 @@
                 }
 
                 $('.shinybox-prev, .shinybox-next').removeClass('disabled');
-                if (index === 0) {
+                if (index === 0 && plugin.settings.cycleImages === false) {
                     $('.shinybox-prev').addClass('disabled');
-                } else if (index === elements.length - 1) {
+                } else if (index === elements.length - 1 && plugin.settings.cycleImages === false) {
                     $('.shinybox-next').addClass('disabled');
                 }
             },
@@ -579,8 +580,13 @@
             getNext : function () {
                 var $this = this,
                     index = $('.shinybox-slider .slide').index($('.shinybox-slider .slide.current'));
-                if (index + 1 < elements.length) {
+                if (index + 1 < elements.length || plugin.settings.cycleImages === true) {
                     index += 1;
+                    
+                    if (index >= elements.length) {
+                        index = 0;
+                    }
+                    
                     $this.setSlide(index);
                     $this.preloadMedia(index + 1);
                 } else {
@@ -594,8 +600,13 @@
 
             getPrev : function () {
                 var index = $('.shinybox-slider .slide').index($('.shinybox-slider .slide.current'));
-                if (index > 0) {
+                if (index > 0 || plugin.settings.cycleImages === true) {
                     index -= 1;
+                    
+                    if (index <= -1) {
+                        index = $('.shinybox-slider .slide').length - 1;
+                    }
+                    
                     this.setSlide(index);
                     this.preloadMedia(index - 1);
                 } else {
