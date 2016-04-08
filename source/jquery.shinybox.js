@@ -392,17 +392,20 @@
 
             keyboard : function () {
                 var $this = this;
-                // Bind to keydown, so we cancel all unsupported keyboard events too
                 $(window).bind('keydown', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (e.keyCode === 37) {
+                    if (e.keyCode === 37 || e.keyCode === 8) {
+                        e.preventDefault();
+                        e.stopPropagation();
                         $this.getPrev();
                     }
                     else if (e.keyCode === 39) {
+                        e.preventDefault();
+                        e.stopPropagation();
                         $this.getNext();
                     }
                     else if (e.keyCode === 27) {
+                        e.preventDefault();
+                        e.stopPropagation();
                         $this.closeSlide();
                     }
                 });
