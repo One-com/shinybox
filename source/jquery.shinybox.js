@@ -611,7 +611,7 @@
             },
 
             destroy : function () {
-                $(window).unbind('keyup');
+                $(window).unbind('keydown');
                 $('body').unbind('touchstart');
                 $('body').unbind('touchmove');
                 $('body').unbind('touchend');
