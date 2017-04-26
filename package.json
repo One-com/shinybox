@@ -6,7 +6,7 @@
     "url": "https://github.com/One-com/shinybox/"
   },
   "devDependencies": {
-    "less": "2.5.3",
+    "less": "^2.7.2",
     "less-plugin-autoprefix": "^1.5.1"
   },
   "scripts": {
