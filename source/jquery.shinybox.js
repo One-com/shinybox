@@ -1,650 +1,961 @@
 /*---------------------------------------------------------------------------------------------
 
 @author       Constantin Saguin - @brutaldesign
-@link            http://csag.co
-@github        http://github.com/One-com/shinybox
-@version     1.2.1
+@link         http://csag.co
+@github       http://github.com/One-com/shinybox
+@version      4.0.0
 @license      MIT License
 
 ----------------------------------------------------------------------------------------------*/
+
 (function (factory) {
     if (typeof exports === 'object') {
         module.exports = factory(require('jQuery'));
     } else if (typeof define === 'function' && define.amd) {
         define(['jquery'], factory);
+    } else {
+        window.Shinybox = factory(jQuery);
     }
 }(function ($) {
-    (function (window, document, $) {
+    (function (window, document, $, undefined) {
+        // Globals
+        var $window = $(window);
+        var $html = $('html');
+        var $body = $(document.body);
 
-        $.shinybox = function (elem, options) {
+        // Browser Support for Features
+        var isMobile = navigator.userAgent.match(/(iPad)|(iPhone)|(iPod)|(Android)|(PlayBook)|(BB10)|(BlackBerry)|(Opera Mini)|(IEMobile)|(webOS)|(MeeGo)/i);
+        var isTouch = isMobile !== null || document.createTouch !== undefined || ('ontouchstart' in window) || ('onmsgesturechange' in window) || navigator.msMaxTouchPoints;
+        var supportSVG = !!document.createElementNS && !!document.createElementNS('http://www.w3.org/2000/svg', 'svg').createSVGRect;
+        var supportCssTransition = checkForCssTransitionSupport();
 
-            var defaults = {
-                useCSS : true,
-                initialIndexOnArray : 0,
-                hideBarsDelay : 3000,
-                videoMaxWidth : 1140,
-                vimeoColor: 'CCCCCC',
-                beforeOpen: null,
-                afterClose: null,
-                sort: null,
-                closePlacement: 'bottom',
-                captionPlacement: 'top',
-                navigationPlacement: 'bottom'
-            },
+        // get window dimensions
+        var windowDimensions = getWindowDimensions();
+        var resizeOps = [function () {
+            windowDimensions = getWindowDimensions();
+        }];
 
-            plugin = this,
-            elements = [], // slides array [{href:'...', title:'...'}, ...],
-            $elem,
-            selector = elem.selector,
-            $selector = $(selector),
-            isTouch = typeof document.createTouch !== 'undefined' || ('ontouchstart' in window) || ('onmsgesturechange' in window) || navigator.msMaxTouchPoints,
-            supportSVG = !!(window.SVGSVGElement),
-            winWidth = window.innerWidth ? window.innerWidth : $(window).width(),
-            winHeight = window.innerHeight ? window.innerHeight : $(window).height(),
-            html = '',
-            id = 'shinybox-overlay';
+        $window.resize(function (e) {
+            resizeOps.forEach(function(operation) {
+                operation(e);
+            });
+        });
 
-            plugin.settings = {};
+        if ("onorientationchange" in window) {
+            window.addEventListener('orientationchange', function () {
+                windowDimensions = getWindowDimensions();
+            }, false);
+        }
 
-            plugin.init = function () {
-                plugin.settings = $.extend({}, defaults, options);
-                var htmlTop = '', htmlBottom = '';
-                if (plugin.settings.sort) {
-                   $selector.sort(plugin.settings.sort);
-                }
-                if (plugin.settings.closePlacement === 'top') {
-                    htmlTop += '<a class="shinybox-close"></a>';
-                } else if (plugin.settings.closePlacement === 'bottom') {
-                    htmlBottom += '<a class="shinybox-close"></a>';
-                }
-                if (plugin.settings.captionPlacement === 'top') {
-                    htmlTop += '<div class="shinybox-caption"></div>';
-                } else if (plugin.settings.captionPlacement === 'bottom') {
-                    htmlBottom += '<div class="shinybox-caption"></div>';
-                }
-                if (plugin.settings.navigationPlacement === 'top') {
-                    htmlTop += '<a class="shinybox-prev"></a>' +
-                        '<a class="shinybox-next"></a>';
-                } else if (plugin.settings.navigationPlacement === 'bottom') {
-                    htmlBottom += '<a class="shinybox-prev"></a>' +
-                        '<a class="shinybox-next"></a>';
-                }
-                id = plugin.settings.id || id;
+        var defaultOptions = {
+            id: 'shinybox-overlay',
+            useCSS: true,
+            useSVG: true,
 
-            html = '<div id="' + id + '" class="shinybox-overlay">' +
-                '<div class="shinybox-slider"></div>' +
-                '<div class="shinybox-top">' +
-                htmlTop +
-                '</div>' +
-                '<div class="shinybox-bottom">' +
-                htmlBottom +
-                '</div>' +
-                '</div>';
+            removeBarsOnMobile: false,
+            hideCloseButtonOnMobile: false,
+            loopAtEnd: false,
 
-                if ($.isArray(elem)) {
+            initialIndexOnArray: 0,
+            hideBarsDelay: 3000,
+            sort: null,
 
-                    elements = elem;
-                    ui.target = $(window);
-                    ui.init(plugin.settings.initialIndexOnArray);
+            closePlacement: 'bottom',
+            captionPlacement: 'top',
+            navigationPlacement: 'bottom',
 
-                } else {
+            videoMaxWidth: 1140,
+            autoplayVideos: false,
+            vimeoColor: 'CCCCCC',
+            queryStringData: {},
 
-                    $selector.click(function (e) {
-                        elements = [];
-                        var index, relType, relVal;
+            beforeOpen: noop,
+            afterClose: noop,
+            afterMedia: noop,
+            afterSlide: noop
+        };
 
-                        if (!relVal) {
-                            relType = 'rel';
-                            relVal  = $(this).attr(relType);
-                        }
+        function Shinybox (element, options) {
+            var self = this === $ ? {} : this;
+            var settings = $.extend({}, defaultOptions, options);
+            var selector = element.selector;
 
-                        if (relVal && relVal !== '' && relVal !== 'nofollow') {
-                            $elem = $selector.filter('[' + relType + '="' + relVal + '"]');
-                        } else {
-                            $elem = $(selector);
-                        }
-
-                        $elem.each(function () {
-
-                            var title = null, href = null;
-
-                            if ($(this).attr('title')) {
-                                title = $(this).attr('title');
-                            }
-                            if ($(this).attr('href')) {
-                                href = $(this).attr('href');
-                            }
-                            elements.push({
-                                href: href,
-                                title: title
-                            });
-                        });
-
-                        index = $elem.index($(this));
-                        e.preventDefault();
-                        e.stopPropagation();
-                        ui.target = $(e.target);
-                        ui.init(index);
-                    });
-                }
+            // Overwrite events to trigger events
+            var eventCatcher, $selectedElements;
+            settings.afterDestroy = function () {
+                eventCatcher.trigger('shinybox-destroy');
+                self.ui = null;
             };
 
-            plugin.refresh = function () {
-                if (!$.isArray(elem)) {
-                    ui.destroy();
-                    $elem = $(selector);
-                    ui.actions();
-                }
-            };
+            // Add destroy and refresh methods
+            if ($.isArray(element)) {
+                eventCatcher = $window;
 
-            var ui = {
-
-                init : function (index) {
-                    if (plugin.settings.beforeOpen)
-                        plugin.settings.beforeOpen();
-                    this.target.trigger('shinybox-start');
-                    $.shinybox.isOpen = true;
-                    this.build();
-                    this.openSlide(index);
-                    this.openMedia(index);
-                    this.preloadMedia(index + 1);
-                    this.preloadMedia(index - 1);
-                },
-
-                build : function () {
-                    var $this = this;
-
-                    $('body').append(html);
-
-                    if ($this.doCssTrans()) {
-                        $('.shinybox-slider').css({
-                            '-webkit-transition' : 'left 0.4s ease',
-                            '-moz-transition' : 'left 0.4s ease',
-                            '-o-transition' : 'left 0.4s ease',
-                            '-khtml-transition' : 'left 0.4s ease',
-                            'transition' : 'left 0.4s ease'
-                        });
-                        $('.shinybox-overlay').css({
-                            '-webkit-transition' : 'opacity 1s ease',
-                            '-moz-transition' : 'opacity 1s ease',
-                            '-o-transition' : 'opacity 1s ease',
-                            '-khtml-transition' : 'opacity 1s ease',
-                            'transition' : 'opacity 1s ease'
-                        });
-                        $('.shinybox-bottom, .shinybox-top').css({
-                            '-webkit-transition' : '0.5s',
-                            '-moz-transition' : '0.5s',
-                            '-o-transition' : '0.5s',
-                            '-khtml-transition' : '0.5s',
-                            'transition' : '0.5s'
-                        });
-                    }
-
-
-                    if (supportSVG) {
-                        var bg = $('.shinybox-close').css('background-image');
-                        bg = bg.replace('png', 'svg');
-                        $('.shinybox-prev,.shinybox-next,.shinybox-close').css({
-                            'background-image' : bg
-                        });
-                    }
-
-                    $.each(elements, function () {
-                        $('.shinybox-slider').append('<div class="slide"></div>');
-                    });
-
-                    $this.setDim();
-                    $this.actions();
-                    $this.keyboard();
-                    $this.gesture();
-                    $this.animBars();
-                    $this.resize();
-
-                },
-
-                setDim : function () {
-
-                    var width, height, sliderCss = {};
-
-                    if ("onorientationchange" in window) {
-                        var calculateWidthAndHeight = function () {
-                            width = window.innerWidth ? window.innerWidth : $(window).width();
-                            height = window.innerHeight ? window.innerHeight : $(window).height();
-                        };
-                        calculateWidthAndHeight();
-                        window.addEventListener("orientationchange", function () {
-                            calculateWidthAndHeight();
-                        }, false);
-                    } else {
-                        width = window.innerWidth ? window.innerWidth : $(window).width();
-                        height = window.innerHeight ? window.innerHeight : $(window).height();
-                    }
-
-                    sliderCss = {
-                        width : width,
-                        height : height
-                    };
-
-
-                    $('.shinybox-overlay').css(sliderCss);
-                    if (plugin.settings.hideBarsDelay === 0) {
-                        $('.shinybox-slider').css({
-                            top: '50px',
-                            height: (height - 100) + 'px'
-                        });
-                    } else {
-                        $('.shinybox-slider').css({
-                            top: 0,
-                            height: '100%'
-                        });
-                    }
-                },
-
-                resize : function () {
-                    var $this = this;
-
-                    $(window).resize(function () {
-                        $this.setDim();
-                    }).resize();
-                },
-
-                supportTransition : function () {
-                    var prefixes = 'transition WebkitTransition MozTransition OTransition msTransition KhtmlTransition'.split(' ');
-                    for (var i = 0; i < prefixes.length; i += 1) {
-                        if (document.createElement('div').style[prefixes[i]] !== undefined) {
-                            return prefixes[i];
-                        }
-                    }
-                    return false;
-                },
-
-                doCssTrans : function () {
-                    if (plugin.settings.useCSS && this.supportTransition()) {
-                        return true;
-                    }
-                },
-
-                gesture : function () {
-                    if (isTouch) {
-                        var $this = this,
-                        distance = null,
-                        swipMinDistance = 10,
-                        startCoords = {},
-                        endCoords = {};
-                        var bars = $('.shinybox-top, .shinybox-bottom');
-
-                        bars.addClass('visible-bars');
-                        $this.setTimeout();
-
-                        $('body').bind('touchstart', function (e) {
-
-                            $(this).addClass('touching');
-
-                            endCoords = e.originalEvent.targetTouches[0];
-                            startCoords.pageX = e.originalEvent.targetTouches[0].pageX;
-
-                            $('.touching').bind('touchmove', function (e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                endCoords = e.originalEvent.targetTouches[0];
-                            });
-
-                            return false;
-
-                        }).bind('touchend', function (e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            distance = endCoords.pageX - startCoords.pageX;
-
-                            if (distance >= swipMinDistance) {
-
-                                // swipeLeft
-                                $this.getPrev();
-
-                            } else if (distance <= - swipMinDistance) {
-
-                                // swipeRight
-                                $this.getNext();
-
-                            } else {
-                                // tap
-                                if (!bars.hasClass('visible-bars')) {
-                                    $this.showBars();
-                                    $this.setTimeout();
-                                } else {
-                                    $this.clearTimeout();
-                                    $this.hideBars();
-                                }
-                            }
-
-                            $('.touching').off('touchmove').removeClass('touching');
-
-                        });
-
-                    }
-                },
-
-                setTimeout: function () {
-                    if (plugin.settings.hideBarsDelay > 0) {
-                        var $this = this;
-                        $this.clearTimeout();
-                        $this.timeout = window.setTimeout(
-                            function () {
-                                $this.hideBars();
-                            },
-                            plugin.settings.hideBarsDelay
-                        );
-                    }
-                },
-
-                clearTimeout: function () {
-                    window.clearTimeout(this.timeout);
-                    this.timeout = null;
-                },
-
-                showBars : function () {
-                    var bars = $('.shinybox-top, .shinybox-bottom');
-                    if (this.doCssTrans()) {
-                        bars.addClass('visible-bars');
-                    } else {
-                        $('.shinybox-top').animate({ top : 0 }, 500);
-                        $('.shinybox-bottom').animate({ bottom : 0 }, 500);
-                        setTimeout(function () {
-                            bars.addClass('visible-bars');
-                        }, 1000);
-                    }
-                },
-
-                hideBars : function () {
-                    var bars = $('.shinybox-top, .shinybox-bottom');
-                    if (this.doCssTrans()) {
-                        bars.removeClass('visible-bars');
-                    } else {
-                        $('.shinybox-top').animate({ top : '-50px' }, 500);
-                        $('.shinybox-bottom').animate({ bottom : '-50px' }, 500);
-                        setTimeout(function () {
-                            bars.removeClass('visible-bars');
-                        }, 1000);
-                    }
-                },
-
-                animBars : function () {
-                    var $this = this;
-                    var bars = $('.shinybox-top, .shinybox-bottom');
-
-                    bars.addClass('visible-bars');
-                    $this.setTimeout();
-
-                    $('.shinybox-slider').click(function (e) {
-                        if (!bars.hasClass('visible-bars')) {
-                            $this.showBars();
-                            $this.setTimeout();
-                        }
-                    });
-
-                    $('.shinybox-bottom').hover(
-                        function () {
-                            $this.showBars();
-                            bars.addClass('force-visible-bars');
-                            $this.clearTimeout();
-                        },
-                        function () {
-                            bars.removeClass('force-visible-bars');
-                            $this.setTimeout();
-                        }
-                    );
-                },
-
-                keyboard : function () {
-                    var $this = this;
-                    $(window).bind('keydown', function (e) {
-                        if (e.keyCode === 37 || e.keyCode === 8) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            $this.getPrev();
-                        }
-                        else if (e.keyCode === 39) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            $this.getNext();
-                        }
-                        else if (e.keyCode === 27) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            $this.closeSlide();
-                        }
-                    });
-                },
-
-                actions : function () {
-                    var $this = this;
-
-                    if (elements.length < 2) {
-                        $('.shinybox-prev, .shinybox-next').hide();
-                    } else {
-                        $('.shinybox-prev').bind('click touchend', function (e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            $this.getPrev();
-                            $this.setTimeout();
-                        });
-
-                        $('.shinybox-next').bind('click touchend', function (e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            $this.getNext();
-                            $this.setTimeout();
-                        });
-                    }
-
-                    $('.shinybox-close').bind('click touchend', function (e) {
-                        $this.closeSlide();
-                    });
-
-                    $('.shinybox-slider .slide').bind('click', function (e) {
-                        if (e.target === this) {
-                            $this.closeSlide();
-                        }
-                    });
-                },
-
-                setSlide : function (index, isFirst) {
-                    isFirst = isFirst || false;
-
-                    var slider = $('.shinybox-slider');
-
-                    if (this.doCssTrans()) {
-                        slider.css({ left : (-index * 100) + '%' });
-                    } else {
-                        slider.animate({ left : (-index * 100) + '%' });
-                    }
-
-                    $('.shinybox-slider .slide').removeClass('current');
-                    $('.shinybox-slider .slide').eq(index).addClass('current');
-                    this.setTitle(index);
-
-                    if (isFirst) {
-                        slider.fadeIn();
-                    }
-
-                    $('.shinybox-prev, .shinybox-next').removeClass('disabled');
-                    if (index === 0) {
-                        $('.shinybox-prev').addClass('disabled');
-                    } else if (index === elements.length - 1) {
-                        $('.shinybox-next').addClass('disabled');
-                    }
-                },
-
-                openSlide : function (index) {
-                    $('html').addClass('shinybox');
-                    $(window).trigger('resize'); // fix scroll bar visibility on desktop
-                    this.setSlide(index, true);
-                },
-
-                preloadMedia : function (index) {
-                    var $this = this, src = null;
-
-                    if (elements[index] !== undefined) {
-                        src = elements[index].href;
-                    }
-                    if (!$this.isVideo(src)) {
-                        setTimeout(function () {
-                            $this.openMedia(index);
-                        }, 300);
-                    } else {
-                        $this.openMedia(index);
-                    }
-                },
-
-                openMedia : function (index) {
-                    var $this = this, src = null;
-
-                    if (elements[index] !== undefined) {
-                        src = elements[index].href;
-                    }
-                    if (index < 0 || index >= elements.length) {
+                self.destroy = function () {
+                    self.ui && self.ui.destroy();
+                };
+                self.refresh = function () {
+                    self.destroy();
+                    self.ui = new UI(element, settings);
+                    eventCatcher.trigger('shinybox-start');
+                    self.ui.openWithSlide(settings.initialIndexOnArray);
+                };
+            } else {
+                function openShinyboxOnClick (e) {
+                    if (e.target.parentNode.className === 'slide current') {
                         return false;
                     }
 
-                    var $element = $('.shinybox-slider .slide').eq(index);
-                    if ($this.isVideo(src)) {
-                        $element.html($this.getVideo(src));
-                    } else if ($this.isPDF(src)) {
-                        $element.html($this.getPDF(src));
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    self.ui && self.ui.destroy();
+
+                    var $this = $(this);
+
+                    // Allow for HTML5 compliant attribute before legacy use of rel
+                    var relType = 'data-rel';
+                    var relVal = $this.attr(relType);
+
+                    if (!relVal) {
+                        relType = 'rel';
+                        relVal = $this.attr(relType);
+                    }
+
+                    // Get all elements related to current element
+                    var $slideElements;
+                    if (relVal && relVal !== 'nofollow') {
+                        $slideElements = $selectedElements.filter('[' + relType + '="' + relVal + '"]');
                     } else {
-                        $element.html('<div class="loading"></div>');
-                        $this.loadMedia(src, function () {
-                            $element.html(this);
-                        });
-                    }
-                },
-
-                setTitle : function (index, isFirst) {
-                    var title = null;
-
-                    $('.shinybox-caption').empty();
-
-                    if (elements[index] !== undefined) {
-                        title = elements[index].title;
-                    }
-                    if (title) {
-                        $('.shinybox-caption').text(title);
-                    }
-                },
-
-                isPDF: function (src) {
-                    if (src) {
-                        if (src.match(/\.pdf(?:\?|$)/)) {
-                            return true;
-                        }
-                    }
-                },
-
-                getPDF: function (url) {
-                    var iframe = '<iframe src="' + url + '">';
-                    return '<div class="shinybox-pdf-container"><div class="shinybox-pdf">' + iframe + '</div></div>';
-                },
-
-                isVideo : function (src) {
-                    if (src) {
-                        if (src.match(/youtube\.com\/watch\?v=([a-zA-Z0-9\-_]+)/) ||
-                            src.match(/vimeo\.com\/([0-9]*)/)) {
-                            return true;
-                        }
+                        $slideElements = $(selector);
                     }
 
-                },
+                    // Generate slides from DOM elements and initialize UI
+                    var index = $slideElements.index($this);
+                    var slides = Array.prototype.map.call($slideElements, function(slideElement) {
+                        var $slideElement = $(slideElement);
+                        return {
+                            href: $slideElement.attr('href') || null,
+                            title: $slideElement.attr('title') || null
+                        };
+                    });
 
-                getVideo : function (url) {
-                    var iframe = '';
-                    var output = '';
-                    var youtubeUrl = url.match(/watch\?v=([a-zA-Z0-9\-_]+)/);
-                    var vimeoUrl = url.match(/vimeo\.com\/([0-9]*)/);
-                    if (youtubeUrl) {
-                        iframe = '<iframe width="560" height="315" src="//www.youtube.com/embed/' + youtubeUrl[1] + '" frameborder="0" allowfullscreen></iframe>';
-                    } else if (vimeoUrl) {
-                        iframe = '<iframe width="560" height="315"  src="http://player.vimeo.com/video/' + vimeoUrl[1] + '?byline=0&amp;portrait=0&amp;color=' + plugin.settings.vimeoColor + '" frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>';
-                    }
-
-                    return '<div class="shinybox-video-container" style="max-width:' + plugin.settings.videomaxWidth + 'px"><div class="shinybox-video">' + iframe + '</div></div>';
-                },
-
-                loadMedia : function (src, callback) {
-                    if (!this.isVideo(src)) {
-                        var img = $('<img>').on('load', function () {
-                            callback.call(img);
-                        });
-
-                        img.attr('src', src);
-                    }
-                },
-
-                getNext : function () {
-                    var $this = this,
-                        index = $('.shinybox-slider .slide').index($('.shinybox-slider .slide.current'));
-                    if (index + 1 < elements.length) {
-                        index += 1;
-                        $this.setSlide(index);
-                        $this.preloadMedia(index + 1);
-                    } else {
-
-                        $('.shinybox-slider').addClass('rightSpring');
-                        setTimeout(function () {
-                            $('.shinybox-slider').removeClass('rightSpring');
-                        }, 500);
-                    }
-                },
-
-                getPrev : function () {
-                    var index = $('.shinybox-slider .slide').index($('.shinybox-slider .slide.current'));
-                    if (index > 0) {
-                        index -= 1;
-                        this.setSlide(index);
-                        this.preloadMedia(index - 1);
-                    } else {
-                        $('.shinybox-slider').addClass('leftSpring');
-                        setTimeout(function () {
-                            $('.shinybox-slider').removeClass('leftSpring');
-                        }, 500);
-                    }
-                },
-
-                closeSlide : function () {
-                    $('html').removeClass('shinybox');
-                    $(window).trigger('resize');
-                    this.destroy();
-                },
-
-                destroy : function () {
-                    $(window).unbind('keydown');
-                    $('body').unbind('touchstart');
-                    $('body').unbind('touchmove');
-                    $('body').unbind('touchend');
-                    $('.shinybox-slider').unbind();
-                    $('.shinybox-overlay').remove();
-                    if (!$.isArray(elem))
-                        elem.removeData('_shinybox');
-                    if (this.target)
-                        this.target.trigger('shinybox-destroy');
-                    $.shinybox.isOpen = false;
-                    if (plugin.settings.afterClose)
-                        plugin.settings.afterClose();
+                    eventCatcher = $(e.target);
+                    self.ui = new UI(slides, settings);
+                    eventCatcher.trigger('shinybox-start');
+                    self.ui.openWithSlide(index);
                 }
 
+                self.destroy = function () {
+                    $selectedElements && $selectedElements.off('click', openShinyboxOnClick);
+                    self.ui && self.ui.destroy();
+                };
+
+                self.refresh = function () {
+                    self.destroy();
+                    $selectedElements = $(selector);
+                    if (settings.sort) {
+                        $selectedElements.sort(settings.sort);
+                    }
+                    $selectedElements.on('click', openShinyboxOnClick);
+                };
+            }
+
+            self.refresh();
+            return self;
+        }
+
+        /**
+         * UI Manager Class
+         */
+        function UI (slides, settings) {
+            this.slides = slides;
+            this.settings = settings;
+            this.currentX = 0;
+            this.build();
+        }
+
+        /**
+         * Built HTML containers and fire main functions
+         */
+        UI.prototype.build = function () {
+            this.overlay = $('<div id="' + this.settings.id + '"  class="shinybox-overlay" />');
+
+            this.closeButton = $('<a class="shinybox-close" />');
+            this.caption = $('<div class="shinybox-caption" />');
+            this.slider = $('<div class="shinybox-slider"></div>');
+
+            this.prevButton = $('<a class="shinybox-prev" />');
+            this.nextButton = $('<a class="shinybox-next" />');
+            this.navigationButtons = this.prevButton.add(this.nextButton);
+
+            this.topBar = $('<div class="shinybox-top" />');
+            this.bottomBar = $('<div class="shinybox-bottom" />');
+            this.bars = this.topBar.add(this.bottomBar);
+
+            var bars = {
+                top: [],
+                bottom: []
             };
 
-            plugin.init();
+            bars[this.settings.closePlacement].push(this.closeButton);
+            if(this.settings.captionPlacement === this.settings.navigationPlacement) {
+                bars[this.settings.captionPlacement].push(this.prevButton, this.caption, this.nextButton);
+            } else {
+                bars[this.settings.captionPlacement].push(this.caption);
+                bars[this.settings.navigationPlacement].push(this.prevButton, this.nextButton);
+            }
 
+            this.topBar.append(bars.top);
+            this.bottomBar.append(bars.bottom);
+            this.overlay.append(this.slider, this.topBar, this.bottomBar);
+            $body.append(this.overlay);
+
+            if (supportSVG && this.settings.useSVG === true) {
+                this.navigationButtons.add(this.closeButton).css({
+                    'background-image': this.closeButton.css('background-image').replace('png', 'svg')
+                });
+            }
+
+            this.slides.forEach(function () {
+                this.slider.append('<div class="slide"></div>');
+            }, this);
+            this.slideElements = this.slider.find('.slide');
+
+            this.updateDimensions();
+
+            if(this.topBar.is(':empty')) {
+                this.topBar.remove();
+            }
+            if(this.bottomBar.is(':empty')) {
+                this.bottomBar.remove();
+            }
+            if (isMobile && this.settings.removeBarsOnMobile) {
+                this.bars.remove();
+            } else {
+                this.setupBarAnimations();
+            }
+
+            this.setupButtonNavigation();
+            this.setupGestureNavigation();
+            this.setupKeyboardNavigation();
+            this.setupWindowResizeEvent();
         };
 
+        /**
+         * Check if CSS transitions are allowed (options + devicesupport)
+         */
+        UI.prototype.doCssTrans = function () {
+            return this.settings.useCSS && supportCssTransition;
+        };
+
+        /**
+         * Set dimensions depending on windows width and height
+         */
+        UI.prototype.updateDimensions = function () {
+            var dimensions = $.extend({}, windowDimensions);
+            this.overlay.css(dimensions);
+            if (this.settings.hideBarsDelay === 0) {
+                this.slider.css({
+                    top: '50px',
+                    height: (dimensions.height - 100) + 'px'
+                });
+            } else {
+                this.slider.css({
+                    top: 0,
+                    height: '100%'
+                });
+            }
+        };
+
+        /**
+         * Animate navigation and top bars
+         */
+        UI.prototype.setupBarAnimations = function () {
+            var self = this;
+            this.showBars();
+            this.hideBarsAfterDelay();
+
+            this.slider.click(function (e) {
+                self.toggleBars();
+            });
+
+            this.bottomBar.hover(
+                function () {
+                    self.showBars();
+                    self.bars.addClass('force-visible-bars');
+                    self.cancelDelayedHideBars();
+                },
+                function () {
+                    self.bars.removeClass('force-visible-bars');
+                    self.hideBarsAfterDelay();
+                }
+            );
+        };
+
+        /**
+         * Show navigation and title bars
+         */
+        UI.prototype.showBars = function () {
+            var self = this;
+            if (this.doCssTrans()) {
+                this.bars.addClass('visible-bars');
+            } else {
+                this.topBar.animate({
+                    top: 0
+                }, 500);
+                this.bottomBar.animate({
+                    bottom: 0
+                }, 500);
+
+                setTimeout(function () {
+                    self.bars.addClass('visible-bars');
+                }, 1000);
+            }
+        };
+
+        /**
+         * Hide navigation and title bars
+         */
+        UI.prototype.hideBars = function () {
+            var self = this;
+            if (this.doCssTrans()) {
+                this.bars.removeClass('visible-bars');
+            } else {
+                this.topBar.animate({
+                    top: '-50px'
+                }, 500);
+                this.bottomBar.animate({
+                    bottom: '-50px'
+                }, 500);
+
+                setTimeout(function () {
+                    self.bars.removeClass('visible-bars');
+                }, 1000);
+            }
+        };
+
+        /**
+         * Toggle navigation and title bars
+         */
+        UI.prototype.toggleBars = function () {
+            if (!this.bars.hasClass('visible-bars')) {
+                this.showBars();
+                this.hideBarsAfterDelay();
+            } else {
+                this.cancelDelayedHideBars();
+                this.hideBars();
+            }
+        };
+
+        /**
+         * Set timer to hide the action bars
+         */
+        UI.prototype.hideBarsAfterDelay = function () {
+            var self = this;
+            if (this.settings.hideBarsDelay > 0) {
+                this.cancelDelayedHideBars();
+                this.timeout = window.setTimeout(
+                    function () {
+                        self.hideBars();
+                    },
+                    this.settings.hideBarsDelay
+                );
+            }
+        };
+
+        /**
+         * Clear timer to hide the action bars
+         */
+        UI.prototype.cancelDelayedHideBars = function () {
+            window.clearTimeout(this.timeout);
+            this.timeout = null;
+        };
+
+        /**
+         * Navigation events : go to next slide, go to prevous slide and close
+         */
+        UI.prototype.setupButtonNavigation = function () {
+            var self = this;
+            if (this.slides.length < 2) {
+                this.navigationButtons.hide();
+            } else {
+                this.prevButton.on('click touchend', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.getPrev();
+                    self.hideBarsAfterDelay();
+                });
+                this.nextButton.on('click touchend', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.getNext();
+                    self.hideBarsAfterDelay();
+                });
+            }
+
+            this.closeButton.on('click touchend', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                self.destroy();
+            });
+
+            this.slideElements.click(function (e) {
+                if (e.target === this) {
+                    self.destroy();
+                }
+            });
+        };
+
+        /**
+         * Touch navigation
+         */
+        UI.prototype.setupGestureNavigation = function () {
+            if(!isTouch) {
+                return;
+            }
+
+            var self = this;
+            var index;
+            var hDistance, vDistance;
+            var hDistanceLast, vDistanceLast;
+            var hDistancePercent;
+            var vSwipe = false;
+            var hSwipe = false;
+            var hSwipMinDistance = 10;
+            var vSwipMinDistance = 50;
+            var startCoords = {};
+            var endCoords = {};
+
+            var touchMoveEventHandler = function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                endCoords = e.originalEvent.targetTouches[0];
+
+                if (!hSwipe) {
+                    vDistanceLast = vDistance;
+                    vDistance = endCoords.pageY - startCoords.pageY;
+                    if (Math.abs(vDistance) >= vSwipMinDistance || vSwipe) {
+                        var opacity = 0.75 - Math.abs(vDistance) / self.slider.height();
+                        self.slider.css({
+                            top: vDistance + 'px',
+                            opacity: opacity
+                        });
+                        vSwipe = true;
+                    }
+                }
+
+                hDistanceLast = hDistance;
+                hDistance = endCoords.pageX - startCoords.pageX;
+                hDistancePercent = hDistance * 100 / windowDimensions.width;
+                if (!hSwipe && !vSwipe && Math.abs(hDistance) >= hSwipMinDistance) {
+                    self.slider.addClass('notransition');
+                    hSwipe = true;
+                }
+
+                if (hSwipe) {
+                    if (0 < hDistance) {
+                        // swipe left
+                        self.moveSlider(self.currentX + (0 === index ? 4 : hDistancePercent));
+                    } else if (0 > hDistance) {
+                        // swipe rught
+                        self.moveSlider(self.currentX + (self.slides.length === index + 1 ? -4 : hDistancePercent));
+                    }
+                }
+            };
+
+            this.overlay.on('touchstart', function (e) {
+                if(e.originalEvent.touches && e.originalEvent.touches.length > 1) {
+                    return true;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                index = self.getCurrentIndex();
+                endCoords = e.originalEvent.targetTouches[0];
+                startCoords.pageX = e.originalEvent.targetTouches[0].pageX;
+                startCoords.pageY = e.originalEvent.targetTouches[0].pageY;
+
+                self.moveSlider(self.currentX);
+                $(this).on('touchmove', touchMoveEventHandler);
+                return false;
+            });
+
+            this.overlay.on('touchend', function (e) {
+                if(e.originalEvent.touches && e.originalEvent.touches.length > 1) {
+                    return true;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                self.slider.removeClass('notransition');
+
+                vDistance = endCoords.pageY - startCoords.pageY;
+                hDistance = endCoords.pageX - startCoords.pageX;
+
+                if (vSwipe) {
+                    // Swipe to bottom to close
+                    vSwipe = false;
+                    if (Math.abs(vDistance) >= 2 * vSwipMinDistance && Math.abs(vDistance) > Math.abs(vDistanceLast)) {
+                        var vOffset = vDistance > 0 ? self.slider.height() : -self.slider.height();
+                        self.slider.animate({
+                            top: vOffset + 'px',
+                            opacity: 0
+                        }, 300, function () {
+                            self.destroy();
+                        });
+                    } else {
+                        self.slider.animate({
+                            top: 0,
+                            opacity: 1
+                        }, 300);
+                    }
+                } else if (hSwipe) {
+                    hSwipe = false;
+                    if( hDistance >= hSwipMinDistance && hDistance >= hDistanceLast) {
+                        // swipeLeft
+                        self.getPrev();
+                    } else if ( hDistance <= -hSwipMinDistance && hDistance <= hDistanceLast) {
+                        // swipeRight
+                        self.getNext();
+                    }
+                } else {
+                    // tap
+                    self.toggleBars();
+                }
+
+                self.moveSlider(self.currentX);
+                $(this).off('touchmove', touchMoveEventHandler);
+            });
+        };
+
+        /**
+         * Keyboard navigation
+         */
+        UI.prototype.setupKeyboardNavigation = function () {
+            var self = this;
+            this._keyDownEvent = function (e) {
+                if(!self.isOpen) {
+                    return true;
+                }
+
+                if (e.keyCode === 37 || e.keyCode === 8) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.getPrev();
+                } else if (e.keyCode === 39) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.getNext();
+                } else if (e.keyCode === 27) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.destroy();
+                }
+            };
+
+            // Bind to keydown, so we cancel all unsupported keyboard events too
+            $window.on('keydown', this._keyDownEvent);
+        };
+
+        /**
+         * Reset dimensions on window resize envent
+         */
+        UI.prototype.setupWindowResizeEvent = function () {
+            var self = this;
+            this.resizeIndex = resizeOps.push(function() {
+                self.updateDimensions();
+            }) - 1;
+        };
+
+        /**
+         * verify validity of index
+         */
+        UI.prototype.validateIndex = function (index) {
+            if (index < 0 || index > this.slides.length - 1) {
+                return 0;
+            }
+
+            return index;
+        };
+
+        /**
+         * get current index
+         */
+        UI.prototype.getCurrentIndex = function () {
+            return this.slideElements.index(this.slideElements.filter('.current'));
+        };
+
+        /**
+         * Move Slider
+         */
+        UI.prototype.moveSlider = function (x) {
+            if (this.doCssTrans()) {
+                this.slider.css({
+                    left: x + '%'
+                });
+            } else {
+                this.slider.animate({
+                    left: x + '%'
+                });
+            }
+        };
+
+        /**
+         * Set current slide
+         */
+        UI.prototype.setSlide = function (index, isFirst) {
+            isFirst = isFirst || false;
+            index = this.validateIndex(index);
+
+            this.currentX = -index * 100;
+            this.moveSlider(this.currentX);
+            this.slideElements.removeClass('current');
+            this.slideElements.eq(index).addClass('current');
+            this.setTitle(index);
+            if (isFirst) {
+                this.slider.fadeIn();
+            }
+
+            if(!this.settings.loopAtEnd) {
+                this.navigationButtons.removeClass('disabled');
+                if (index === 0) {
+                    this.prevButton.addClass('disabled');
+                } else if (index === this.slides.length - 1) {
+                    this.nextButton.addClass('disabled');
+                }
+            }
+
+            this.settings.afterSlide(this.slideElements.filter('.current').children(), index);
+        };
+
+        /**
+         * Set link title attribute as caption
+         */
+        UI.prototype.setTitle = function (index) {
+            index = this.validateIndex(index);
+
+            var title = this.slides[index].title;
+            this.caption.text(title || '');
+        };
+
+        /**
+         * Open Shiny Box with given slide
+         */
+        UI.prototype.openWithSlide = function (index) {
+            index = this.validateIndex(index);
+
+            var nextIndex = index < this.slides.length - 1 ? index + 1 : 0;
+            var prevIndex = index > 0 ? index - 1 : this.slides.length - 1;
+
+            this.open();
+            this.setSlide(index);
+            this.preloadMedia(index);
+
+            if(this.settings.loopAtEnd || nextIndex !== 0) {
+                this.preloadMedia(nextIndex);
+            }
+            if(this.settings.loopAtEnd || prevIndex !== this.slides.length - 1) {
+                this.preloadMedia(prevIndex);
+            }
+        };
+
+        /**
+         * Get next slide
+         */
+        UI.prototype.getNext = function () {
+            var self = this;
+            var currentIndex = this.getCurrentIndex();
+            var nextIndex = (currentIndex + 1) < this.slides.length ? currentIndex + 1 : 0;
+            var preloadIndex = (nextIndex + 1) < this.slides.length ? nextIndex + 1 : 0;
+
+            if (this.settings.loopAtEnd || (currentIndex + 1) < this.slides.length) {
+                this.resetIframeInSlide(currentIndex);
+
+                this.setSlide(nextIndex);
+                this.preloadMedia(preloadIndex);
+            } else {
+                this.overlay.addClass('rightSpring');
+                setTimeout(function () {
+                   self.overlay.removeClass('rightSpring');
+                }, 500);
+            }
+        };
+
+        /**
+         * Get prev slide
+         */
+        UI.prototype.getPrev = function () {
+            var self = this;
+            var currentIndex = this.getCurrentIndex();
+            var prevIndex = currentIndex > 0 ? currentIndex - 1 : this.slides.length - 1;
+            var preloadIndex = prevIndex > 0 ? prevIndex - 1 : this.slides.length - 1;
+
+            if (this.settings.loopAtEnd || currentIndex > 0) {
+                // Reset iframe before exiting slide, to have zero delay when the slide is opened next time
+                this.resetIframeInSlide(currentIndex);
+
+                this.setSlide(prevIndex);
+                this.preloadMedia(preloadIndex);
+            } else {
+                this.overlay.addClass('leftSpring');
+                setTimeout(function () {
+                    self.overlay.removeClass('leftSpring');
+                }, 500);
+            }
+        };
+
+        /**
+         * If slide contains an iframe, refresh it before exiting slide.
+         * to have zero delay when the slide is opened next time
+         */
+        UI.prototype.resetIframeInSlide = function(index) {
+            index = this.validateIndex(index);
+
+            var iframeInSlide = this.slideElements.eq(index).contents().find('iframe');
+            if (iframeInSlide.length) {
+                iframeInSlide.attr('src', iframeInSlide.attr('src'));
+            }
+        };
+
+        /**
+         * Set a time out if the media is a video
+         */
+        UI.prototype.preloadMedia = function (index) {
+            index = this.validateIndex(index);
+
+            var self = this;
+            var src = this.slides[index].href;
+
+            if (!this.isVideo(src)) {
+                setTimeout(function () {
+                    self.openMedia(index, src);
+                }, 300);
+            } else {
+                this.openMedia(index, src);
+            }
+        };
+
+        /**
+         * Open
+         */
+        UI.prototype.openMedia = function (index, src) {
+            index = this.validateIndex(index);
+
+            var self = this;
+
+            if (!src) {
+                src = this.slides[index].href;
+            }
+
+            if(!src) {
+                return false;
+            }
+
+            var $slide = this.slideElements.eq(index);
+            if (this.isVideo(src)) {
+                $slide.html(this.getVideo(src));
+                this.settings.afterMedia($slide.children(), index);
+            } else if (this.isPDF(src)) {
+                $slide.html(this.getPDF(src));
+                this.settings.afterMedia($slide.children(), index);
+            } else {
+                $slide.html('<div class="loading"></div>');
+                this.loadMedia(src, function (media) {
+                    $slide.html(media);
+                    self.settings.afterMedia($slide.children(), index);
+                });
+            }
+        };
+
+        /**
+         * Load image
+         */
+        UI.prototype.loadMedia = function (src, callback) {
+            callback = callback || noop;
+
+            // Inline content
+            if (src.trim().indexOf('#') === 0) {
+                callback($('<div class="shinybox-inline-container" />').append($(src).clone()));
+            }
+
+            // Everything else
+            else {
+                var img = $('<img>').on('load', function () {
+                    callback(img);
+                });
+                img.attr('src', src);
+            }
+        };
+
+        /**
+         * Open Shiny Box
+         */
+        UI.prototype.open = function () {
+            this.isOpen = true;
+            this.settings.beforeOpen();
+            $html.addClass('shinybox-html');
+            if (isMobile && this.settings.hideCloseButtonOnMobile) {
+                $html.addClass('shinybox-no-close-button');
+            }
+
+            // fix scroll bar visibility on desktop
+            $window.trigger('resize');
+        };
+
+        /**
+         * Close Shiny Box
+         */
+        UI.prototype.close = function () {
+            $html.removeClass('shinybox-html shinybox-no-close-button');
+            $window.trigger('resize');
+            this.settings.afterClose();
+            this.isOpen = false;
+        };
+
+        /**
+         * Destroy the whole thing
+         */
+        UI.prototype.destroy = function () {
+            this.close();
+
+            // Reset Events
+            $window.off('keydown', this._keyDownEvent);
+            resizeOps.splice(this.resizeIndex, 1);
+
+            this.overlay.remove();
+            this.settings.afterDestroy();
+        };
+
+        /**
+         * Check if the URL is a pdf
+         */
+        UI.prototype.isPDF = function (src) {
+            return !!src && src.match(/\.pdf(?:\?|$)/);
+        };
+
+        /**
+         * Get pdf iframe code from URL
+         */
+        UI.prototype.getPDF = function (url) {
+            var iframe = '<iframe src="' + url + '">';
+            return '<div class="shinybox-pdf-container"><div class="shinybox-pdf">' + iframe + '</div></div>';
+        };
+
+        /**
+         * Check if the URL is a video
+         */
+        UI.prototype.isVideo = function (src) {
+            if (src) {
+                if (src.match(/(youtube\.com|youtube-nocookie\.com)\/watch\?v=([a-zA-Z0-9\-_]+)/) || src.match(/vimeo\.com\/([0-9]*)/) || src.match(/youtu\.be\/([a-zA-Z0-9\-_]+)/)) {
+                    return true;
+                }
+                if (src.toLowerCase().indexOf('shinyboxvideo=1') >= 0) {
+                    return true;
+                }
+            }
+        };
+
+        /**
+         * Parse URI querystring and:
+         * - overrides value provided via dictionary
+         * - rebuild it again returning a string
+         */
+        UI.prototype.parseURI = function (uri, customData) {
+            var a = document.createElement('a'),
+                qs = {};
+            // Decode the URI
+            a.href = decodeURIComponent(uri);
+            // QueryString to Object
+            if (a.search) {
+                qs = JSON.parse('{"' + a.search.toLowerCase().replace('?', '').replace(/&/g, '","').replace(/=/g, '":"') + '"}');
+            }
+            // Extend with custom data
+            if ($.isPlainObject(customData)) {
+                qs = $.extend(qs, customData, this.settings.queryStringData); // The dev has always the final word
+            }
+
+            // Return querystring as a string
+            return $
+                .map(qs, function (val, key) {
+                    if (val && val > '') {
+                        return encodeURIComponent(key) + '=' + encodeURIComponent(val);
+                    }
+                })
+                .join('&');
+        };
+
+        /**
+         * Get video iframe code from URL
+         */
+        UI.prototype.getVideo = function (url) {
+            var iframe = '';
+            var output = '';
+            var youtubeUrl = url.match(/((?:www\.)?youtube\.com|(?:www\.)?youtube-nocookie\.com)\/watch\?v=([a-zA-Z0-9\-_]+)/);
+            var youtubeShortUrl = url.match(/(?:www\.)?youtu\.be\/([a-zA-Z0-9\-_]+)/);
+            var vimeoUrl = url.match(/(?:www\.)?vimeo\.com\/([0-9]*)/);
+            var qs = '';
+
+            if (youtubeUrl || youtubeShortUrl) {
+                if (youtubeShortUrl) {
+                    youtubeUrl = youtubeShortUrl;
+                }
+                qs = this.parseURI(url, {
+                    'autoplay': (this.settings.autoplayVideos ? '1' : '0'),
+                    'v': ''
+                });
+                iframe = '<iframe width="560" height="315" src="//' + youtubeUrl[1] + '/embed/' + youtubeUrl[2] + '?' + qs + '" frameborder="0" allowfullscreen></iframe>';
+            } else if (vimeoUrl) {
+                qs = this.parseURI(url, {
+                    'autoplay': (this.settings.autoplayVideos ? '1' : '0'),
+                    'byline': '0',
+                    'portrait': '0',
+                    'color': this.settings.vimeoColor
+                });
+                iframe = '<iframe width="560" height="315"  src="//player.vimeo.com/video/' + vimeoUrl[1] + '?' + qs + '" frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>';
+            } else {
+                iframe = '<iframe width="560" height="315" src="' + url + '" frameborder="0" allowfullscreen></iframe>';
+            }
+            return '<div class="shinybox-video-container" style="max-width:' + this.settings.videomaxWidth + 'px"><div class="shinybox-video">' + iframe + '</div></div>';
+        };
+
+        $.shinybox = Shinybox;
         $.fn.shinybox = function (options) {
-            if (!$.data(this, "_shinybox")) {
-                var shinybox = new $.shinybox(this, options);
+            var instance = this.data('_shinybox');
+
+            if(instance && options === 'destroy') {
+                instance.destroy();
+                return this.removeData('_shinybox');
+            }
+
+            if (!instance) {
+                var shinybox = new Shinybox(this, options);
                 this.data('_shinybox', shinybox);
             }
+
             return this.data('_shinybox');
         };
+
+        return Shinybox;
+
+        // Utilities
+        function noop() {}
+
+        function checkForCssTransitionSupport() {
+            var prefixes = ["transition", "WebkitTransition", "MozTransition", "OTransition", "msTransition", "KhtmlTransition"];
+            return prefixes.some(function (prefix) {
+                return document.createElement('div').style[prefix] !== undefined;
+            });
+        }
+
+        function getWindowDimensions() {
+            return {
+                width: window.innerWidth ? window.innerWidth : $window.width(),
+                height: window.innerHeight ? window.innerHeight : $window.height()
+            };
+        }
 
     }(window, document, $));
 }));

@@ -1,11 +1,5 @@
-@image_basepath: '';
+@image_basepath: '.';
 
-@import 'shinybox.less';
+@import url('shinybox.less');
 
-html.shinybox {
-    overflow: hidden!important;
-}
-
-#shinybox-overlay {
-    .shinybox-overlay(@image_basepath);
-}
+.shinybox(@image_basepath);
