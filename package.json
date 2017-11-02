@@ -1,15 +1,15 @@
 {
   "name": "jquery-shinybox",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/One-com/shinybox/"
   },
   "devDependencies": {
-    "less": "2.5.3",
-    "less-plugin-autoprefix": "^1.5.1"
+    "less": "2.7.3",
+    "less-plugin-autoprefix": "1.5.1"
   },
   "scripts": {
-    "prepublish": "./node_modules/less/bin/lessc --autoprefix=\"last 2 versions, ie >= 10\" source/import.less > source/shinybox.css"
+    "prepublish": "./node_modules/less/bin/lessc --autoprefix source/import.less > source/shinybox.css"
   }
 }
