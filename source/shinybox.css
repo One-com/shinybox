@@ -1,12 +1,10 @@
-html.shinybox {
+html.shinybox-html {
   overflow: hidden!important;
 }
-
-#shinybox-overlay img {
-  border: none!important;
+.notransition {
+  transition: none;
 }
-
-#shinybox-overlay {
+.shinybox-overlay {
   width: 100%;
   height: 100%;
   position: fixed;
@@ -15,43 +13,90 @@ html.shinybox {
   z-index: 99999!important;
   overflow: hidden;
   -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none;
+  background: rgba(13, 13, 13, 0.6);
+  display: none;
 }
-
-#shinybox-slider {
+.shinybox-html .shinybox-overlay {
+  display: block;
+}
+@-webkit-keyframes rightSpring {
+  0% {
+    margin-left: 0px;
+  }
+  50% {
+    margin-left: -4%;
+  }
+  100% {
+    margin-left: 0px;
+  }
+}
+@keyframes rightSpring {
+  0% {
+    margin-left: 0px;
+  }
+  50% {
+    margin-left: -4%;
+  }
+  100% {
+    margin-left: 0px;
+  }
+}
+@-webkit-keyframes leftSpring {
+  0% {
+    margin-left: 0px;
+  }
+  50% {
+    margin-left: 4%;
+  }
+  100% {
+    margin-left: 0px;
+  }
+}
+@keyframes leftSpring {
+  0% {
+    margin-left: 0px;
+  }
+  50% {
+    margin-left: 4%;
+  }
+  100% {
+    margin-left: 0px;
+  }
+}
+.shinybox-overlay img {
+  border: none!important;
+}
+.shinybox-overlay .shinybox-slider {
   height: 100%;
   left: 0;
   top: 0;
   width: 100%;
   white-space: nowrap;
   position: absolute;
-  display: none;
+  transition: left 0.4s ease;
 }
-
-#shinybox-slider .slide {
-  background: url("img/loader.gif") no-repeat center center;
+.shinybox-overlay .shinybox-slider .slide {
   height: 100%;
-  width: 100%;
+  width: 98%;
   line-height: 1px;
   text-align: center;
   display: inline-block;
+  margin: 0 1%;
 }
-
-#shinybox-slider .slide.loaded {
-  background-image: none !important;
-}
-
-#shinybox-slider .slide:before {
+.shinybox-overlay .shinybox-slider .slide:before {
   content: "";
   display: inline-block;
   height: 50%;
   width: 1px;
   margin-right: -1px;
 }
-
-#shinybox-slider .slide img,
-#shinybox-slider .slide .shinybox-video-container {
+.shinybox-overlay .shinybox-slider .slide img,
+.shinybox-overlay .shinybox-slider .slide .shinybox-video-container,
+.shinybox-overlay .shinybox-slider .slide .shinybox-pdf-container,
+.shinybox-overlay .shinybox-slider .slide .shinybox-inline-container {
   display: inline-block;
   max-height: 100%;
   max-width: 100%;
@@ -61,67 +106,99 @@ html.shinybox {
   height: auto;
   vertical-align: middle;
 }
-
-#shinybox-slider .slide .shinybox-video-container {
-  background:none;
+.shinybox-overlay .shinybox-slider .slide .shinybox-video-container {
+  background: none;
   max-width: 1140px;
   max-height: 100%;
   width: 100%;
-  padding:5%;
+  padding: 5%;
   box-sizing: border-box;
-  -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
 }
-
-
-#shinybox-slider .slide .shinybox-video-container .shinybox-video{
+.shinybox-overlay .shinybox-slider .slide .shinybox-video-container .shinybox-video {
   width: 100%;
   height: 0;
   padding-bottom: 56.25%;
   overflow: hidden;
   position: relative;
 }
-
-#shinybox-slider .slide .shinybox-video-container .shinybox-video iframe{
+.shinybox-overlay .shinybox-slider .slide .shinybox-video-container .shinybox-video iframe {
   width: 100%!important;
   height: 100%!important;
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
 }
-
-#shinybox-bottom, #shinybox-top {
+.shinybox-overlay .shinybox-slider .slide .shinybox-pdf-container {
+  background: none;
+  max-width: 1140px;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.shinybox-overlay .shinybox-slider .slide .shinybox-pdf-container .shinybox-pdf {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.shinybox-overlay .shinybox-slider .slide .shinybox-pdf-container .shinybox-pdf iframe {
+  width: 100%!important;
+  height: 100%!important;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.shinybox-overlay .shinybox-slider .loading {
+  background: url("img/loader.gif") no-repeat center center;
+  height: 31px;
+  width: 31px;
+  margin: auto;
+}
+.shinybox-overlay.rightSpring .shinybox-slider {
+  -webkit-animation: rightSpring 0.3s;
+          animation: rightSpring 0.3s;
+}
+.shinybox-overlay.leftSpring .shinybox-slider {
+  -webkit-animation: leftSpring 0.3s;
+          animation: leftSpring 0.3s;
+}
+.shinybox-overlay .shinybox-bottom,
+.shinybox-overlay .shinybox-top {
   position: absolute;
   left: 0;
   z-index: 999;
   height: 50px;
   width: 100%;
+  text-shadow: 1px 1px 1px black;
+  background-color: #0d0d0d;
+  background-image: linear-gradient(#0d0d0d, #000000);
+  opacity: 0.95;
+  transition: 0.5s;
 }
-
-#shinybox-bottom {
-  text-align: right;
-  bottom: -50px;
-}
-#shinybox-bottom.visible-bars {
-  bottom: 0;
-}
-
-#shinybox-bottom.force-visible-bars {
-  bottom: 0!important;
-}
-
-#shinybox-top {
+.shinybox-overlay .shinybox-top {
   top: -50px;
 }
-#shinybox-top.visible-bars {
+.shinybox-overlay .shinybox-top.visible-bars {
   top: 0;
 }
-
-#shinybox-top.force-visible-bars {
+.shinybox-overlay .shinybox-top.force-visible-bars {
   top: 0!important;
 }
-
-#shinybox-prev, #shinybox-next,
-#shinybox-close {
+.shinybox-overlay .shinybox-bottom {
+  text-align: right;
+  bottom: -50px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+.shinybox-overlay .shinybox-bottom.visible-bars {
+  bottom: 0;
+}
+.shinybox-overlay .shinybox-bottom.force-visible-bars {
+  bottom: 0!important;
+}
+.shinybox-overlay .shinybox-prev,
+.shinybox-overlay .shinybox-next,
+.shinybox-overlay .shinybox-close {
   background-image: url("img/icons.svg");
   background-repeat: no-repeat;
   border: none!important;
@@ -130,122 +207,35 @@ html.shinybox {
   width: 50px;
   height: 50px;
   display: inline-block;
+  vertical-align: middle;
   position: relative;
   z-index: 1;
 }
-
-#shinybox-close {
+.shinybox-overlay .shinybox-close {
   background-position: 15px 12px;
   float: left;
 }
-
-#shinybox-prev {
+.shinybox-no-close-button .shinybox-overlay .shinybox-close {
+  display: none;
+}
+.shinybox-overlay .shinybox-prev {
   background-position: -32px 13px;
 }
-
-#shinybox-next {
-  background-position: -78px 13px;
-}
-
-#shinybox-prev.disabled,
-#shinybox-next.disabled {
-  filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=30);
+.shinybox-overlay .shinybox-prev.disabled {
   opacity: 0.3;
 }
-
-#shinybox-slider.rightSpring {
-  -moz-animation: rightSpring 0.3s;
-  -webkit-animation: rightSpring 0.3s;
+.shinybox-overlay .shinybox-next {
+  background-position: -78px 13px;
 }
-
-#shinybox-slider.leftSpring {
-  -moz-animation: leftSpring 0.3s;
-  -webkit-animation: leftSpring 0.3s;
+.shinybox-overlay .shinybox-next.disabled {
+  opacity: 0.3;
 }
-
-@-moz-keyframes rightSpring {
-  0% {
-    margin-left: 0px;
-  }
-
-  50% {
-    margin-left: -30px;
-  }
-
-  100% {
-    margin-left: 0px;
-  }
-}
-
-@-moz-keyframes leftSpring {
-  0% {
-    margin-left: 0px;
-  }
-
-  50% {
-    margin-left: 30px;
-  }
-
-  100% {
-    margin-left: 0px;
-  }
-}
-
-@-webkit-keyframes rightSpring {
-  0% {
-    margin-left: 0px;
-  }
-
-  50% {
-    margin-left: -30px;
-  }
-
-  100% {
-    margin-left: 0px;
-  }
-}
-
-@-webkit-keyframes leftSpring {
-  0% {
-    margin-left: 0px;
-  }
-
-  50% {
-    margin-left: 30px;
-  }
-
-  100% {
-    margin-left: 0px;
-  }
-}
-
-/* Skin
---------------------------*/
-#shinybox-overlay {
-  background: rgba(13, 13, 13, 0.6);
-}
-
-#shinybox-bottom, #shinybox-top {
-  text-shadow: 1px 1px 1px black;
-  background-color: #0d0d0d;
-  background-image: -webkit-gradient(linear, 50% 0%, 50% 100%, color-stop(0%, #0d0d0d), color-stop(100%, #000000));
-  background-image: -webkit-linear-gradient(#0d0d0d, #000000);
-  background-image: -moz-linear-gradient(#0d0d0d, #000000);
-  background-image: -o-linear-gradient(#0d0d0d, #000000);
-  background-image: linear-gradient(#0d0d0d, #000000);
-  filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=95);
-  opacity: 0.95;
-}
-
-#shinybox-bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-#shinybox-caption {
+.shinybox-overlay .shinybox-caption {
   color: white!important;
   font-size: 15px;
   line-height: 50px;
   font-family: Helvetica, Arial, sans-serif;
-  text-align: center;
+  display: inline-block;
+  vertical-align: middle;
+  padding: 0 15px;
 }
