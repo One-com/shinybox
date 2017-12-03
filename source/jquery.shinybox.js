@@ -76,7 +76,7 @@
         };
 
         function Shinybox (element, options) {
-            var self = this === $ ? {} : this;
+            var self = this instanceof Shinybox ? this : {};
             var settings = $.extend({}, defaultOptions, options);
             var selector = element.selector;
 
