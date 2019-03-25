@@ -50,19 +50,13 @@
         var defaultOptions = {
             id: 'shinybox-overlay',
             useCSS: true,
-            useSVG: true,
-
-            removeBarsOnMobile: false,
+            noTitleCaptionBox: false,
             hideCloseButtonOnMobile: false,
             loopAtEnd: false,
+            showNavigationsOnMobile: false,
 
             initialIndexOnArray: 0,
-            hideBarsDelay: 3000,
             sort: null,
-
-            closePlacement: 'bottom',
-            captionPlacement: 'top',
-            navigationPlacement: 'bottom',
 
             videoMaxWidth: 1140,
             autoplayVideos: false,
@@ -136,7 +130,8 @@
                         var $slideElement = $(slideElement);
                         return {
                             href: $slideElement.attr('href') || null,
-                            title: $slideElement.attr('title') || null
+                            title: $slideElement.attr('title') || null,
+                            caption: $slideElement.attr('caption') || null
                         };
                     });
 
@@ -153,7 +148,7 @@
 
                 self.refresh = function () {
                     self.destroy();
-                    $selectedElements = $(selector);
+                    $selectedElements = element;
                     if (settings.sort) {
                         $selectedElements.sort(settings.sort);
                     }
@@ -182,40 +177,36 @@
             this.overlay = $('<div id="' + this.settings.id + '"  class="shinybox-overlay" />');
 
             this.closeButton = $('<a class="shinybox-close" />');
-            this.caption = $('<div class="shinybox-caption" />');
+            this.captionBox = $('<div class="shinybox-caption captionTitle"></div>');
+            
+            this.caption = $('<p class="caption"></p>');
+            this.title = $('<p class="title"></p>');
+            
+            this.captionBox.append(this.title, this.caption);
+
+            this.navigationContainer = $('<div class="navigationContainer"></div>')
+
             this.slider = $('<div class="shinybox-slider"></div>');
 
             this.prevButton = $('<a class="shinybox-prev" />');
             this.nextButton = $('<a class="shinybox-next" />');
-            this.navigationButtons = this.prevButton.add(this.nextButton);
+            this.navigationContainer.append(this.prevButton, this.nextButton);
 
-            this.topBar = $('<div class="shinybox-top" />');
-            this.bottomBar = $('<div class="shinybox-bottom" />');
-            this.bars = this.topBar.add(this.bottomBar);
+            this.overlay.append(this.slider, this.closeButton, this.captionBox, this.navigationContainer);
 
-            var bars = {
-                top: [],
-                bottom: []
-            };
-
-            bars[this.settings.closePlacement].push(this.closeButton);
-            if(this.settings.captionPlacement === this.settings.navigationPlacement) {
-                bars[this.settings.captionPlacement].push(this.prevButton, this.caption, this.nextButton);
-            } else {
-                bars[this.settings.captionPlacement].push(this.caption);
-                bars[this.settings.navigationPlacement].push(this.prevButton, this.nextButton);
+            if (isMobile) {
+                this.overlay.addClass("mobile-view");
+            }
+            
+            if (this.settings.noTitleCaptionBox) {
+                this.overlay.addClass("noTitleCaptionBox");
             }
 
-            this.topBar.append(bars.top);
-            this.bottomBar.append(bars.bottom);
-            this.overlay.append(this.slider, this.topBar, this.bottomBar);
+            if (!this.settings.showNavigationsOnMobile) {
+                this.navigationContainer.addClass("hideMe");
+            }
+
             $body.append(this.overlay);
-
-            if (supportSVG && this.settings.useSVG === true) {
-                this.navigationButtons.add(this.closeButton).css({
-                    'background-image': this.closeButton.css('background-image').replace('png', 'svg')
-                });
-            }
 
             this.slides.forEach(function () {
                 this.slider.append('<div class="slide"></div>');
@@ -223,18 +214,6 @@
             this.slideElements = this.slider.find('.slide');
 
             this.updateDimensions();
-
-            if(this.topBar.is(':empty')) {
-                this.topBar.remove();
-            }
-            if(this.bottomBar.is(':empty')) {
-                this.bottomBar.remove();
-            }
-            if (isMobile && this.settings.removeBarsOnMobile) {
-                this.bars.remove();
-            } else {
-                this.setupBarAnimations();
-            }
 
             this.setupButtonNavigation();
             this.setupGestureNavigation();
@@ -255,142 +234,23 @@
         UI.prototype.updateDimensions = function () {
             var dimensions = $.extend({}, windowDimensions);
             this.overlay.css(dimensions);
-            if (this.settings.hideBarsDelay === 0) {
-                this.slider.css({
-                    top: '50px',
-                    height: (dimensions.height - 100) + 'px'
-                });
-            } else {
-                this.slider.css({
-                    top: 0,
-                    height: '100%'
-                });
-            }
         };
 
-        /**
-         * Animate navigation and top bars
-         */
-        UI.prototype.setupBarAnimations = function () {
-            var self = this;
-            this.showBars();
-            this.hideBarsAfterDelay();
 
-            this.slider.click(function (e) {
-                self.toggleBars();
-            });
-
-            this.bottomBar.hover(
-                function () {
-                    self.showBars();
-                    self.bars.addClass('force-visible-bars');
-                    self.cancelDelayedHideBars();
-                },
-                function () {
-                    self.bars.removeClass('force-visible-bars');
-                    self.hideBarsAfterDelay();
-                }
-            );
-        };
-
-        /**
-         * Show navigation and title bars
-         */
-        UI.prototype.showBars = function () {
-            var self = this;
-            if (this.doCssTrans()) {
-                this.bars.addClass('visible-bars');
-            } else {
-                this.topBar.animate({
-                    top: 0
-                }, 500);
-                this.bottomBar.animate({
-                    bottom: 0
-                }, 500);
-
-                setTimeout(function () {
-                    self.bars.addClass('visible-bars');
-                }, 1000);
-            }
-        };
-
-        /**
-         * Hide navigation and title bars
-         */
-        UI.prototype.hideBars = function () {
-            var self = this;
-            if (this.doCssTrans()) {
-                this.bars.removeClass('visible-bars');
-            } else {
-                this.topBar.animate({
-                    top: '-50px'
-                }, 500);
-                this.bottomBar.animate({
-                    bottom: '-50px'
-                }, 500);
-
-                setTimeout(function () {
-                    self.bars.removeClass('visible-bars');
-                }, 1000);
-            }
-        };
-
-        /**
-         * Toggle navigation and title bars
-         */
-        UI.prototype.toggleBars = function () {
-            if (!this.bars.hasClass('visible-bars')) {
-                this.showBars();
-                this.hideBarsAfterDelay();
-            } else {
-                this.cancelDelayedHideBars();
-                this.hideBars();
-            }
-        };
-
-        /**
-         * Set timer to hide the action bars
-         */
-        UI.prototype.hideBarsAfterDelay = function () {
-            var self = this;
-            if (this.settings.hideBarsDelay > 0) {
-                this.cancelDelayedHideBars();
-                this.timeout = window.setTimeout(
-                    function () {
-                        self.hideBars();
-                    },
-                    this.settings.hideBarsDelay
-                );
-            }
-        };
-
-        /**
-         * Clear timer to hide the action bars
-         */
-        UI.prototype.cancelDelayedHideBars = function () {
-            window.clearTimeout(this.timeout);
-            this.timeout = null;
-        };
-
-        /**
-         * Navigation events : go to next slide, go to prevous slide and close
-         */
         UI.prototype.setupButtonNavigation = function () {
             var self = this;
             if (this.slides.length < 2) {
-                this.navigationButtons.hide();
+                this.navigationContainer.hide();
             } else {
                 this.prevButton.on('click touchend', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     self.getPrev();
-                    self.hideBarsAfterDelay();
                 });
                 this.nextButton.on('click touchend', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     self.getNext();
-                    self.hideBarsAfterDelay();
                 });
             }
 
@@ -426,11 +286,12 @@
             var vSwipMinDistance = 50;
             var startCoords = {};
             var endCoords = {};
-
+            
             var touchMoveEventHandler = function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 endCoords = e.originalEvent.targetTouches[0];
+                
 
                 if (!hSwipe) {
                     vDistanceLast = vDistance;
@@ -464,6 +325,8 @@
                 }
             };
 
+            
+            var touchPoints = null;
             this.overlay.on('touchstart', function (e) {
                 if(e.originalEvent.touches && e.originalEvent.touches.length > 1) {
                     return true;
@@ -474,6 +337,7 @@
 
                 index = self.getCurrentIndex();
                 endCoords = e.originalEvent.targetTouches[0];
+                touchPoints = e.originalEvent.targetTouches;
                 startCoords.pageX = e.originalEvent.targetTouches[0].pageX;
                 startCoords.pageY = e.originalEvent.targetTouches[0].pageY;
 
@@ -494,11 +358,12 @@
 
                 vDistance = endCoords.pageY - startCoords.pageY;
                 hDistance = endCoords.pageX - startCoords.pageX;
+                var hasOneTouchPoint = touchPoints.length === 1;
 
                 if (vSwipe) {
                     // Swipe to bottom to close
                     vSwipe = false;
-                    if (Math.abs(vDistance) >= 2 * vSwipMinDistance && Math.abs(vDistance) > Math.abs(vDistanceLast)) {
+                    if (Math.abs(vDistance) >= 2 * vSwipMinDistance && Math.abs(vDistance) > Math.abs(vDistanceLast) && hasOneTouchPoint) {
                         var vOffset = vDistance > 0 ? self.slider.height() : -self.slider.height();
                         self.slider.animate({
                             top: vOffset + 'px',
@@ -514,16 +379,13 @@
                     }
                 } else if (hSwipe) {
                     hSwipe = false;
-                    if( hDistance >= hSwipMinDistance && hDistance >= hDistanceLast) {
+                    if( hDistance >= hSwipMinDistance && hDistance >= hDistanceLast && hasOneTouchPoint) {
                         // swipeLeft
                         self.getPrev();
-                    } else if ( hDistance <= -hSwipMinDistance && hDistance <= hDistanceLast) {
+                    } else if ( hDistance <= -hSwipMinDistance && hDistance <= hDistanceLast && hasOneTouchPoint) {
                         // swipeRight
                         self.getNext();
                     }
-                } else {
-                    // tap
-                    self.toggleBars();
                 }
 
                 self.moveSlider(self.currentX);
@@ -620,7 +482,8 @@
             }
 
             if(!this.settings.loopAtEnd) {
-                this.navigationButtons.removeClass('disabled');
+                this.prevButton.removeClass('disabled');
+                this.nextButton.removeClass('disabled');
                 if (index === 0) {
                     this.prevButton.addClass('disabled');
                 } else if (index === this.slides.length - 1) {
@@ -638,7 +501,14 @@
             index = this.validateIndex(index);
 
             var title = this.slides[index].title;
-            this.caption.text(title || '');
+            var caption = this.slides[index].caption;
+            if (!title && !caption) {
+                this.captionBox.addClass("noTitleCaption");
+            } else {
+                this.captionBox.removeClass("noTitleCaption");
+            }
+            this.caption.text(caption || '');
+            this.title.text(title || '');
         };
 
         /**
