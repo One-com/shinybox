@@ -61,19 +61,13 @@ $(".shinybox").shinybox();
 ```javascript
 id: 'shinybox-overlay', // id of the overlay element
 useCSS: true, // false will force the use of jQuery for animations
-useSVG: true, // true will use svg icons instead of png icons
 
-removeBarsOnMobile: false, // remove top and bottom bars on mobile
 hideCloseButtonOnMobile: false, // hide close button on mobile, you can always use swipe up or down to close the shinybox on mobile
 loopAtEnd: false, // Play images in loop in either directions
 
-initialIndexOnArray: 0, // which image index to init when a array is passed
-hideBarsDelay: 3000, // 0 to always show caption and action bar
+noTitleCaptionBox: false, //  Set true if you don't have title caption box
+showNavigationsOnMobile: false, // true to always show navigation icon on mobile
 sort: null, // a sorting function to sort the dom elements before showing in shinybox
-
-closePlacement: 'bottom', // places close button in bottom bar
-captionPlacement: 'top', // places caption in top bar
-navigationPlacement: 'bottom', // places navigation buttons in bottom bar
 
 videoMaxWidth: 1140, // videos max width
 autoplayVideos: false, // true will autoplay Youtube and Vimeo videos
