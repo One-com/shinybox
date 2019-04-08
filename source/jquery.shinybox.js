@@ -261,7 +261,7 @@
             });
 
             this.slideElements.click(function (e) {
-                if (e.target === this) {
+                if (e.target === this && e.target.children.length >= 1) {
                     self.destroy();
                 }
             });
