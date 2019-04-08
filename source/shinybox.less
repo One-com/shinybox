@@ -2,6 +2,12 @@ html.shinybox-html {
     overflow: hidden!important;
 }
 
+@keyframes loader-dots {
+    0% { background-color: #f9f9f9; }
+   50% { background-color: #878787; }
+  100% { background-color: #f9f9f9; }
+}
+
 .shinybox(@baseUrl: '') {
     .notransition {
         transition: none;
@@ -187,11 +193,51 @@ html.shinybox-html {
                 }
             }
 
+            .loading,
+            .loading::after,
+            .loading::before {
+                display: block;
+                background-color: #888;
+                width: 12px;
+                height: 12px;
+                border-radius: 12px;
+                -webkit-animation-name: loader-dots;
+                animation-name: loader-dots;
+                -webkit-animation-iteration-count: infinite;
+                animation-iteration-count: infinite;
+                -webkit-animation-timing-function: linear;
+                animation-timing-function: linear;
+                -webkit-animation-duration: 1s;
+                animation-duration: 1s;
+            }
+
+            .loading::after,
+            .loading::before {
+            content: '';
+                margin: 0 24px;
+            }
+
             .loading {
-                background: url("@{baseUrl}/img/loader.gif") no-repeat center center;
-                height: 31px;
-                width: 31px;
-                margin: auto;
+                -webkit-animation-delay: 200ms;
+                animation-delay: 200ms;
+                margin: 0;
+                position: relative;
+                top: 50%;
+                left: 50%;
+                -webkit-transform: translate(-50%,-50%);
+                transform: translate(-50%,-50%);
+            }
+
+            .loading::before {
+                -webkit-animation-delay: 0s;
+                animation-delay: 0s;
+                margin-left: -24px;
+            }
+
+            .loading::after {
+                -webkit-animation-delay: 400ms;
+                animation-delay: 400ms;
+                margin-top: -12px;
             }
         }
 
@@ -209,7 +255,7 @@ html.shinybox-html {
         .navigationContainer {
             position: absolute;
             top: 10%;
-            bottom: 20%;
+            bottom: 10%;
             left: 0;
             right: 0;
             margin: auto;

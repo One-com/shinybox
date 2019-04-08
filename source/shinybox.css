@@ -1,6 +1,17 @@
 html.shinybox-html {
   overflow: hidden!important;
 }
+@keyframes loader-dots {
+  0% {
+    background-color: #f9f9f9;
+  }
+  50% {
+    background-color: #878787;
+  }
+  100% {
+    background-color: #f9f9f9;
+  }
+}
 .notransition {
   transition: none;
 }
@@ -163,11 +174,39 @@ html.shinybox-html {
   top: 0;
   left: 0;
 }
+.shinybox-overlay .shinybox-slider .loading,
+.shinybox-overlay .shinybox-slider .loading::after,
+.shinybox-overlay .shinybox-slider .loading::before {
+  display: block;
+  background-color: #888;
+  width: 12px;
+  height: 12px;
+  border-radius: 12px;
+  animation-name: loader-dots;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  animation-duration: 1s;
+}
+.shinybox-overlay .shinybox-slider .loading::after,
+.shinybox-overlay .shinybox-slider .loading::before {
+  content: '';
+  margin: 0 24px;
+}
 .shinybox-overlay .shinybox-slider .loading {
-  background: url("img/loader.gif") no-repeat center center;
-  height: 31px;
-  width: 31px;
-  margin: auto;
+  animation-delay: 200ms;
+  margin: 0;
+  position: relative;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.shinybox-overlay .shinybox-slider .loading::before {
+  animation-delay: 0s;
+  margin-left: -24px;
+}
+.shinybox-overlay .shinybox-slider .loading::after {
+  animation-delay: 400ms;
+  margin-top: -12px;
 }
 .shinybox-overlay.rightSpring .shinybox-slider {
   animation: rightSpring 0.3s;
@@ -178,7 +217,7 @@ html.shinybox-html {
 .shinybox-overlay .navigationContainer {
   position: absolute;
   top: 10%;
-  bottom: 20%;
+  bottom: 10%;
   left: 0;
   right: 0;
   margin: auto;

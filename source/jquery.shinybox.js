@@ -233,7 +233,7 @@
          */
         UI.prototype.updateDimensions = function () {
             var dimensions = $.extend({}, windowDimensions);
-            this.overlay.css(dimensions);
+            // this.overlay.css(dimensions);
         };
 
 
@@ -329,10 +329,11 @@
             var touchPoints = null;
             this.overlay.on('touchstart', function (e) {
                 if(e.originalEvent.touches && e.originalEvent.touches.length > 1) {
+                    $(this).off('touchmove', touchMoveEventHandler);
                     return true;
                 }
 
-                e.preventDefault();
+                // e.preventDefault();
                 e.stopPropagation();
 
                 index = self.getCurrentIndex();
@@ -343,15 +344,15 @@
 
                 self.moveSlider(self.currentX);
                 $(this).on('touchmove', touchMoveEventHandler);
-                return false;
             });
 
             this.overlay.on('touchend', function (e) {
                 if(e.originalEvent.touches && e.originalEvent.touches.length > 1) {
+                    $(this).off('touchmove', touchMoveEventHandler);
                     return true;
                 }
 
-                e.preventDefault();
+                // e.preventDefault();
                 e.stopPropagation();
 
                 self.slider.removeClass('notransition');
@@ -632,7 +633,7 @@
                 $slide.html(this.getPDF(src));
                 this.settings.afterMedia($slide.children(), index);
             } else {
-                $slide.html('<div class="loading"></div>');
+                $slide.html('<div class="loadingWrapper"><div class="loading"></div></div>');
                 this.loadMedia(src, function (media) {
                     $slide.html(media);
                     self.settings.afterMedia($slide.children(), index);
