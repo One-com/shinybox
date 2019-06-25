@@ -66,7 +66,8 @@
             beforeOpen: noop,
             afterClose: noop,
             afterMedia: noop,
-            afterSlide: noop
+            afterSlide: noop,
+            verticalSwipeDisable: false
         };
 
         function Shinybox (element, options) {
@@ -125,15 +126,20 @@
                     }
 
                     // Generate slides from DOM elements and initialize UI
-                    var index = $slideElements.index($this);
-                    var slides = Array.prototype.map.call($slideElements, function(slideElement) {
-                        var $slideElement = $(slideElement);
-                        return {
-                            href: $slideElement.attr('href') || null,
-                            title: $slideElement.attr('title') || null,
-                            caption: $slideElement.attr('caption') || null
-                        };
+                    var filteredSlides = Array.prototype.filter.call($slideElements, function (slideElement) {
+                        return !$(slideElement).data("ignore");
                     });
+                    var index = typeof $this.data("dom-index") !== "undefined" ? $this.data("dom-index") - $(filteredSlides[0]).data("dom-index") : $(filteredSlides).index($this);
+
+                    var slides = Array.prototype.map.call(filteredSlides, function(slideElement) {
+                            var $slideElement = $(slideElement);
+                            return {
+                                href: $slideElement.attr('href') || null,
+                                title: $slideElement.attr('title') || null,
+                                caption: $slideElement.attr('caption') || null,
+                                srcset: $slideElement.attr('data-hrefs') || null
+                            };
+                        });
 
                     eventCatcher = $(e.target);
                     self.ui = new UI(slides, settings);
@@ -291,9 +297,8 @@
                 e.preventDefault();
                 e.stopPropagation();
                 endCoords = e.originalEvent.targetTouches[0];
-                
 
-                if (!hSwipe) {
+                if (!hSwipe && !self.settings.verticalSwipeDisable) {
                     vDistanceLast = vDistance;
                     vDistance = endCoords.pageY - startCoords.pageY;
                     if (Math.abs(vDistance) >= vSwipMinDistance || vSwipe) {
@@ -309,6 +314,7 @@
                 hDistanceLast = hDistance;
                 hDistance = endCoords.pageX - startCoords.pageX;
                 hDistancePercent = hDistance * 100 / windowDimensions.width;
+
                 if (!hSwipe && !vSwipe && Math.abs(hDistance) >= hSwipMinDistance) {
                     self.slider.addClass('notransition');
                     hSwipe = true;
@@ -333,7 +339,7 @@
                     return true;
                 }
 
-                // e.preventDefault();
+                e.preventDefault();
                 e.stopPropagation();
 
                 index = self.getCurrentIndex();
@@ -361,7 +367,7 @@
                 hDistance = endCoords.pageX - startCoords.pageX;
                 var hasOneTouchPoint = touchPoints.length === 1;
 
-                if (vSwipe) {
+                if (vSwipe && !self.settings.verticalSwipeDisable) {
                     // Swipe to bottom to close
                     vSwipe = false;
                     if (Math.abs(vDistance) >= 2 * vSwipMinDistance && Math.abs(vDistance) > Math.abs(vDistanceLast) && hasOneTouchPoint) {
@@ -599,26 +605,30 @@
 
             var self = this;
             var src = this.slides[index].href;
-
+            var srcset = this.slides[index].srcset;
             if (!this.isVideo(src)) {
                 setTimeout(function () {
-                    self.openMedia(index, src);
+                    self.openMedia(index, src, srcset);
                 }, 300);
             } else {
-                this.openMedia(index, src);
+                this.openMedia(index, src, srcset);
             }
         };
 
         /**
          * Open
          */
-        UI.prototype.openMedia = function (index, src) {
+        UI.prototype.openMedia = function (index, src, srcset) {
             index = this.validateIndex(index);
 
             var self = this;
 
             if (!src) {
                 src = this.slides[index].href;
+            }
+
+            if (!srcset) {
+                srcset = this.slides[index].srcset;
             }
 
             if(!src) {
@@ -634,7 +644,7 @@
                 this.settings.afterMedia($slide.children(), index);
             } else {
                 $slide.html('<div class="loadingWrapper"><div class="loading"></div></div>');
-                this.loadMedia(src, function (media) {
+                this.loadMedia(src, srcset, function (media) {
                     $slide.html(media);
                     self.settings.afterMedia($slide.children(), index);
                 });
@@ -644,7 +654,7 @@
         /**
          * Load image
          */
-        UI.prototype.loadMedia = function (src, callback) {
+        UI.prototype.loadMedia = function (src, srcset, callback) {
             callback = callback || noop;
 
             // Inline content
@@ -658,6 +668,7 @@
                     callback(img);
                 });
                 img.attr('src', src);
+                img.attr('srcset', srcset);
             }
         };
 
