@@ -3,7 +3,7 @@
 @author       Constantin Saguin - @brutaldesign
 @link         http://csag.co
 @github       http://github.com/One-com/shinybox
-@version      5.0.4
+@version      5.1.0
 @license      MIT License
 
 ----------------------------------------------------------------------------------------------*/
